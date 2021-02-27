@@ -1,4 +1,6 @@
-# Template of multi-target (WASM / Native) Bevy's application
+# Physics based tetris clone.
+
+* Muti target. Wasm and native.
 
 ## Prerequisites
 
@@ -17,5 +19,3 @@ then point your browser to http://127.0.0.1:4000/
 ```
 cargo make run
 ```
-
-![Screenshot](https://mrk.sed.pl/bevy-showcase/assets/bevy_webgl2_app_template.png?v=3)
