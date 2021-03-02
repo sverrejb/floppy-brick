@@ -12,17 +12,8 @@ use bevy_rapier2d::rapier::na::Vector2;
 use nalgebra::Point2;
 use rand::{random, Rng};
 
-// fn vain() {
-//     let mut app = App::build();
-//     app.add_resource(Msaa { samples: 4 })
-//         .add_plugins(DefaultPlugins);
-//     #[cfg(target_arch = "wasm32")]
-//     app.add_plugin(bevy_webgl2::WebGL2Plugin);
-//     app.add_startup_system(setup.system()).run();
-// }
 
 fn main() {
-    // Set up Bevy
     let mut app = App::build();
     app.init_resource::<Game>()
         .add_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
@@ -164,7 +155,6 @@ fn setup_game(
     game.camera = commands.spawn(Camera2dBundle::default()).current_entity();
 }
 
-/// Represent Tetris' different tetromino kinds
 #[derive(Clone, Copy, Debug)]
 enum TetrominoKind {
     I,
