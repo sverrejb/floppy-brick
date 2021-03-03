@@ -10,25 +10,10 @@ use bevy_rapier2d::rapier::dynamics::{BallJoint, RigidBody, RigidBodyBuilder, Ri
 use bevy_rapier2d::rapier::geometry::ColliderBuilder;
 use bevy_rapier2d::rapier::na::Vector2;
 use nalgebra::Point2;
-use rand::{random, Rng};
+use rand::Rng;
 
-
-fn main() {
-    let mut app = App::build();
-    app.init_resource::<Game>()
-        .add_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-        .add_resource(Msaa::default())
-        .add_plugins(DefaultPlugins)
-        .add_startup_system(setup_game.system())
-        .add_startup_system(setup_board.system())
-        .add_startup_system(setup_initial_tetromino.system())
-        .add_system(tetromino_movement.system())
-        .add_system(tetromino_sleep_detection.system())
-        .add_plugin(RapierPhysicsPlugin);
-    #[cfg(target_arch = "wasm32")]
-    app.add_plugin(bevy_webgl2::WebGL2Plugin);
-    app.run();
-}
+mod tetromino;
+use tetromino::IVector;
 
 //
 // Note on coordinate systems used
@@ -62,6 +47,23 @@ fn main() {
 // screen coordinates.
 //
 
+fn main() {
+    let mut app = App::build();
+    app.init_resource::<Game>()
+        .add_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
+        .add_resource(Msaa::default())
+        .add_plugins(DefaultPlugins)
+        .add_startup_system(setup_game.system())
+        .add_startup_system(setup_board.system())
+        .add_startup_system(setup_initial_tetromino.system())
+        .add_system(tetromino_movement.system())
+        .add_system(tetromino_sleep_detection.system())
+        .add_plugin(RapierPhysicsPlugin);
+    #[cfg(target_arch = "wasm32")]
+    app.add_plugin(bevy_webgl2::WebGL2Plugin);
+    app.run();
+}
+
 const BLOCK_PX_SIZE: f32 = 30.0;
 
 // In terms of block size:
@@ -78,7 +80,6 @@ const N_ROWS: usize = 20;
 
 /// Type for our discrete coordinate systems
 /// (column, row) or (x, y)
-type IVector = (i32, i32);
 
 /// This struct is used as a Bevy resource: Res<Game>
 struct Game {
@@ -155,73 +156,6 @@ fn setup_game(
     game.camera = commands.spawn(Camera2dBundle::default()).current_entity();
 }
 
-#[derive(Clone, Copy, Debug)]
-enum TetrominoKind {
-    I,
-    O,
-    T,
-    J,
-    L,
-    S,
-    Z,
-}
-
-impl TetrominoKind {
-    fn random() -> Self {
-        match rand::thread_rng().gen_range(0..=6) {
-            0 => Self::I,
-            1 => Self::O,
-            2 => Self::T,
-            3 => Self::J,
-            4 => Self::L,
-            5 => Self::S,
-            _ => Self::Z,
-        }
-    }
-
-    fn layout(&self) -> TetrominoLayout {
-        match self {
-            Self::I => TetrominoLayout {
-                coords: [(1, 1), (1, 0), (1, -1), (1, -2)],
-                joints: vec![(0, 1), (1, 2), (2, 3)],
-            },
-            Self::O => TetrominoLayout {
-                coords: [(0, 0), (1, 0), (1, -1), (0, -1)],
-                joints: vec![(0, 1), (1, 2), (2, 3), (1, 0)],
-            },
-            Self::T => TetrominoLayout {
-                coords: [(0, 0), (1, 0), (2, 0), (1, -1)],
-                joints: vec![(0, 1), (1, 2), (1, 3)],
-            },
-            Self::J => TetrominoLayout {
-                coords: [(1, 0), (1, -1), (1, -2), (0, -2)],
-                joints: vec![(0, 1), (1, 2), (2, 3)],
-            },
-            Self::L => TetrominoLayout {
-                coords: [(1, 0), (1, -1), (1, -2), (2, -2)],
-                joints: vec![(0, 1), (1, 2), (2, 3)],
-            },
-            Self::S => TetrominoLayout {
-                coords: [(0, -1), (1, -1), (1, 0), (2, 0)],
-                joints: vec![(0, 1), (1, 2), (2, 3)],
-            },
-            Self::Z => TetrominoLayout {
-                coords: [(0, 0), (1, 0), (1, -1), (2, -1)],
-                joints: vec![(0, 1), (1, 2), (2, 3)],
-            },
-        }
-    }
-}
-
-/// The layout of one tetromino
-struct TetrominoLayout {
-    /// All tetrominos consist of 4 blocks, so we use a fixed-size array.
-    /// This is expressed in the tetromino coordinate system
-    coords: [IVector; 4],
-    /// OTOH, The number of _joints_ is variable..
-    joints: Vec<(usize, usize)>,
-}
-
 struct Block;
 
 // startup system
@@ -257,8 +191,8 @@ fn setup_initial_tetromino(commands: &mut Commands, mut game: ResMut<Game>) {
 }
 
 fn spawn_tetromino(commands: &mut Commands, game: &mut Game) {
-    let kind = TetrominoKind::random();
-    let TetrominoLayout { coords, joints } = kind.layout();
+    let kind = tetromino::TetrominoKind::random();
+    let tetromino::TetrominoLayout { coords, joints } = kind.layout();
 
     let block_entities: Vec<Entity> = coords
         .iter()
@@ -292,7 +226,7 @@ fn spawn_tetromino(commands: &mut Commands, game: &mut Game) {
 fn spawn_block(
     commands: &mut Commands,
     game: &Game,
-    kind: TetrominoKind,
+    kind: tetromino::TetrominoKind,
     tetromino_coord: IVector,
 ) -> Entity {
     let (x, y) = game.board_to_physics(game.translate_to_board_center_top(tetromino_coord));
