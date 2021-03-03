@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 
-use bevy::prelude::*;
-use bevy::render::camera::OrthographicProjection;
 use bevy::render::pass::ClearColor;
+use bevy::{prelude::*, render::camera::OrthographicProjection};
 use bevy_rapier2d::physics::{
     JointBuilderComponent, RapierConfiguration, RapierPhysicsPlugin, RigidBodyHandleComponent,
 };
@@ -13,7 +12,7 @@ use nalgebra::Point2;
 use rand::Rng;
 
 mod tetromino;
-use tetromino::IVector;
+use tetromino::{IVector, TetrominoKind, TetrominoLayout};
 
 //
 // Note on coordinate systems used
@@ -50,14 +49,15 @@ use tetromino::IVector;
 fn main() {
     let mut app = App::build();
     app.init_resource::<Game>()
-        .add_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-        .add_resource(Msaa::default())
+        .add_resource(ClearColor(byte_rgb(33, 33, 33)))
+        .add_resource(Msaa { samples: 8 })
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup_game.system())
         .add_startup_system(setup_board.system())
         .add_startup_system(setup_initial_tetromino.system())
         .add_system(tetromino_movement.system())
         .add_system(tetromino_sleep_detection.system())
+        .add_system(tetromino_out_of_bounds_detection.system())
         .add_plugin(RapierPhysicsPlugin);
     #[cfg(target_arch = "wasm32")]
     app.add_plugin(bevy_webgl2::WebGL2Plugin);
@@ -77,9 +77,6 @@ const TORQUE: f32 = 20.0;
 
 const N_LANES: usize = 10;
 const N_ROWS: usize = 20;
-
-/// Type for our discrete coordinate systems
-/// (column, row) or (x, y)
 
 /// This struct is used as a Bevy resource: Res<Game>
 struct Game {
@@ -140,8 +137,19 @@ impl Default for Game {
     }
 }
 
+///
+/// Translate from "normal" rgb to 0..1 format
+///
+
 fn byte_rgb(r: u8, g: u8, b: u8) -> Color {
     Color::rgb(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0)
+}
+
+fn random_color() -> Color {
+    let r = rand::thread_rng().gen_range(0..255);
+    let g = rand::thread_rng().gen_range(0..255);
+    let b = rand::thread_rng().gen_range(0..255);
+    byte_rgb(r, g, b)
 }
 
 fn setup_game(
@@ -191,12 +199,12 @@ fn setup_initial_tetromino(commands: &mut Commands, mut game: ResMut<Game>) {
 }
 
 fn spawn_tetromino(commands: &mut Commands, game: &mut Game) {
-    let kind = tetromino::TetrominoKind::random();
-    let tetromino::TetrominoLayout { coords, joints } = kind.layout();
+    let kind = TetrominoKind::random();
+    let TetrominoLayout { coords, joints } = kind.layout();
 
     let block_entities: Vec<Entity> = coords
         .iter()
-        .map(|_| spawn_block(commands, game, kind, coords[0]))
+        .map(|_| spawn_block(commands, game, coords[0]))
         .collect();
 
     let joint_entities: Vec<Entity> = joints
@@ -223,12 +231,7 @@ fn spawn_tetromino(commands: &mut Commands, game: &mut Game) {
     game.current_tetromino_joints = joint_entities.into_iter().collect();
 }
 
-fn spawn_block(
-    commands: &mut Commands,
-    game: &Game,
-    kind: tetromino::TetrominoKind,
-    tetromino_coord: IVector,
-) -> Entity {
+fn spawn_block(commands: &mut Commands, game: &Game, tetromino_coord: IVector) -> Entity {
     let (x, y) = game.board_to_physics(game.translate_to_board_center_top(tetromino_coord));
 
     println!("block physics coords: {}, {}", x, y);
@@ -300,9 +303,16 @@ fn tetromino_sleep_detection(
     }
 }
 
-fn random_color() -> Color {
-    let r = rand::thread_rng().gen_range(0..255);
-    let g = rand::thread_rng().gen_range(0..255);
-    let b = rand::thread_rng().gen_range(0..255);
-    byte_rgb(r, g, b)
+// system
+fn tetromino_out_of_bounds_detection(
+    commands: &mut Commands,
+    mut game: ResMut<Game>,
+    projection_query: Query<&OrthographicProjection>,
+    block_query: Query<(Entity, &RigidBodyHandleComponent)>,
+    rigid_bodies: ResMut<RigidBodySet>,
+) {
+    for projection in projection_query.iter() {
+        println!("tick");
+        println!("{}", projection.bottom);
+    }
 }

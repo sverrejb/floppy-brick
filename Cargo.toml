@@ -1,9 +1,9 @@
 [package]
-name = "bevy_app"
+name = "floppy-brick"
 version = "0.1.0"
-authors = []
+authors = ["Sverre Johann Bjørke"]
 edition = "2018"
-repository = "https://github.com/mrk-its/bevy_webgl2_app_template"
+repository = "https://github.com/sverrejb/floppy-brick"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
